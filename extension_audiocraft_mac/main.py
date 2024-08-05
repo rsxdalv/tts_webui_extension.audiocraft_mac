@@ -242,7 +242,7 @@ def generation_tab_musicgen():
                 value="small",
             )
             melody = gr.Audio(
-                source="upload",
+                sources="upload",
                 type="numpy",
                 label="Melody (optional)",
                 elem_classes="tts-audio",
