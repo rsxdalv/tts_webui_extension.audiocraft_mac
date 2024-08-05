@@ -353,7 +353,7 @@ def generation_tab_musicgen():
     )
 
     set_old_seed_button.click(
-        fn=lambda x: gr.Number.update(value=x),
+        fn=lambda x: gr.Number(value=x),
         inputs=seed_cache,
         outputs=seed,
     )
