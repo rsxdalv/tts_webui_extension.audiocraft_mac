@@ -4,21 +4,17 @@ from audiocraft_apple_silicon.models.musicgen import MusicGen
 from typing import Optional, Tuple, TypedDict
 import numpy as np
 import os
-from src.bark.npz_tools import save_npz_musicgen
-from src.musicgen.setup_seed_ui_musicgen import setup_seed_ui_musicgen
-from src.bark.parse_or_set_seed import parse_or_set_seed
-from src.musicgen.audio_array_to_sha256 import audio_array_to_sha256
-from src.utils.set_seed import set_seed
+from tts_webui.bark.npz_tools import save_npz_musicgen
+from tts_webui.musicgen.setup_seed_ui_musicgen import setup_seed_ui_musicgen
+from tts_webui.bark.parse_or_set_seed import parse_or_set_seed
+from tts_webui.musicgen.audio_array_to_sha256 import audio_array_to_sha256
+from tts_webui.utils.set_seed import set_seed
 
-from src.extensions_loader.ext_callback_save_generation import (
-    ext_callback_save_generation_musicgen,
-)
-from src.utils.create_base_filename import create_base_filename
-from src.history_tab.save_to_favorites import save_to_favorites
-from src.bark.get_filenames import get_filenames
-from src.utils.date import get_date_string
+from tts_webui.utils.create_base_filename import create_base_filename
+from tts_webui.history_tab.save_to_favorites import save_to_favorites
+from tts_webui.utils.date import get_date_string
 from scipy.io.wavfile import write as write_wav
-from src.utils.save_waveform_plot import middleware_save_waveform_plot
+from tts_webui.utils.save_waveform_plot import middleware_save_waveform_plot
 
 import json
 from typing import Optional
@@ -30,7 +26,7 @@ def extension__tts_generation_webui():
     return {
         "package_name": "extension_audiocraft_mac",
         "name": "MusicGen (Mac)",
-        "version": "0.0.1",
+        "version": "0.0.5",
         "requirements": "git+https://github.com/rsxdalv/extension_audiocraft_mac@main",
         "description": "MusicGen allows generating music from text",
         "extension_type": "interface",
@@ -104,6 +100,13 @@ def save_generation(
     title = prompt[:20].replace(" ", "_")
     base_filename = create_base_filename(title, "outputs", model="musicgen", date=date)
 
+    def get_filenames(base_filename):
+        filename = f"{base_filename}.wav"
+        filename_png = f"{base_filename}.png"
+        filename_json = f"{base_filename}.json"
+        filename_npz = f"{base_filename}.npz"
+        return filename, filename_png, filename_json, filename_npz
+
     filename, filename_png, filename_json, filename_npz = get_filenames(base_filename)
     stereo = audio_array.shape[0] == 2
     if stereo:
@@ -122,16 +125,16 @@ def save_generation(
         save_npz_musicgen(filename_npz, tokens, metadata)
 
     filename_ogg = filename.replace(".wav", ".ogg")
-    ext_callback_save_generation_musicgen(
-        audio_array=audio_array,
-        files={
-            "wav": filename,
-            "png": filename_png,
-            "ogg": filename_ogg,
-        },
-        metadata=metadata,
-        SAMPLE_RATE=SAMPLE_RATE,
-    )
+    # ext_callback_save_generation_musicgen(
+    #     audio_array=audio_array,
+    #     files={
+    #         "wav": filename,
+    #         "png": filename_png,
+    #         "ogg": filename_ogg,
+    #     },
+    #     metadata=metadata,
+    #     SAMPLE_RATE=SAMPLE_RATE,
+    # )
 
     return filename, plot, metadata
 
@@ -381,25 +384,9 @@ def generation_tab_musicgen():
 
 
 if __name__ == "__main__":
+    if "demo" in locals():
+        demo.close()  # type: ignore
     with gr.Blocks() as demo:
         generation_tab_musicgen()
 
     demo.launch()
-
-# from src.musicgen.musicgen_tab import generate, MusicGenGeneration
-
-# generate(
-#     params=MusicGenGeneration(
-#         model="facebook/musicgen-small",
-#         text="I am a robot",
-#         cfg_coef=3.0,
-#         duration=10,
-#         melody=None,
-#         seed=0,
-#         temperature=1.0,
-#         topk=250,
-#         topp=0.0,
-#         use_multi_band_diffusion=False,
-#     ),
-#     melody_in=None,
-# )
