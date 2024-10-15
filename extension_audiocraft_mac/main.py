@@ -1,6 +1,5 @@
 import torch
 import gradio as gr
-from audiocraft_apple_silicon.models.musicgen import MusicGen
 from typing import Optional, Tuple, TypedDict
 import numpy as np
 import os
@@ -8,6 +7,8 @@ from tts_webui.bark.npz_tools import save_npz_musicgen
 from tts_webui.musicgen.setup_seed_ui_musicgen import setup_seed_ui_musicgen
 from tts_webui.bark.parse_or_set_seed import parse_or_set_seed
 from tts_webui.musicgen.audio_array_to_sha256 import audio_array_to_sha256
+from tts_webui.utils.list_dir_models import unload_model_button
+from tts_webui.utils.manage_model_state import manage_model_state
 from tts_webui.utils.set_seed import set_seed
 
 from tts_webui.utils.create_base_filename import create_base_filename
@@ -26,7 +27,7 @@ def extension__tts_generation_webui():
     return {
         "package_name": "extension_audiocraft_mac",
         "name": "MusicGen (Mac)",
-        "version": "0.0.5",
+        "version": "0.0.6",
         "requirements": "git+https://github.com/rsxdalv/extension_audiocraft_mac@main",
         "description": "MusicGen allows generating music from text",
         "extension_type": "interface",
@@ -139,10 +140,10 @@ def save_generation(
     return filename, plot, metadata
 
 
-MODEL = None
-
-
+@manage_model_state("musicgen_audiogen_apple_silicon")
 def load_model(version):
+    from audiocraft_apple_silicon.models.musicgen import MusicGen
+
     return MusicGen.get_pretrained(version)
 
 
@@ -162,9 +163,7 @@ def generate(params: MusicGenGeneration, melody_in: Optional[Tuple[int, np.ndarr
     params["melody"] = None if "melody" not in model else melody_in
     melody = params["melody"]
 
-    global MODEL
-    if MODEL is None or MODEL.name != model:
-        MODEL = load_model(model)
+    MODEL = load_model(model)
 
     MODEL.set_generation_params(
         use_sampling=True,
@@ -287,6 +286,8 @@ def generation_tab_musicgen():
                 interactive=False,
             )
             seed, set_old_seed_button, _ = setup_seed_ui_musicgen()
+
+            unload_model_button("musicgen_audiogen_apple_silicon")
 
     with gr.Column():
         output = gr.Audio(

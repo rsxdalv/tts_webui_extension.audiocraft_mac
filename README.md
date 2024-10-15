@@ -19,3 +19,8 @@ Running MusicGen
 To run the application, you must set the PYTORCH_ENABLE_MPS_FALLBACK environment variable when running like so:
 
 PYTORCH_ENABLE_MPS_FALLBACK=1 python app
+
+# Changelog
+
+* Make model lazy loaded
+* Add model unload button
