@@ -1,25 +1,24 @@
-import torch
-import gradio as gr
-from typing import Optional, Tuple, TypedDict
-import numpy as np
+import json
 import os
+from importlib.metadata import version
+from typing import Optional, Tuple, TypedDict
+
+import gradio as gr
+import numpy as np
+import torch
+from scipy.io.wavfile import write as write_wav
+
 from tts_webui.bark.npz_tools import save_npz_musicgen
-from tts_webui.musicgen.setup_seed_ui_musicgen import setup_seed_ui_musicgen
 from tts_webui.bark.parse_or_set_seed import parse_or_set_seed
+from tts_webui.history_tab.save_to_favorites import save_to_favorites
 from tts_webui.musicgen.audio_array_to_sha256 import audio_array_to_sha256
+from tts_webui.musicgen.setup_seed_ui_musicgen import setup_seed_ui_musicgen
+from tts_webui.utils.create_base_filename import create_base_filename
+from tts_webui.utils.date import get_date_string
 from tts_webui.utils.list_dir_models import unload_model_button
 from tts_webui.utils.manage_model_state import manage_model_state
-from tts_webui.utils.set_seed import set_seed
-
-from tts_webui.utils.create_base_filename import create_base_filename
-from tts_webui.history_tab.save_to_favorites import save_to_favorites
-from tts_webui.utils.date import get_date_string
-from scipy.io.wavfile import write as write_wav
 from tts_webui.utils.save_waveform_plot import middleware_save_waveform_plot
-
-import json
-from typing import Optional
-from importlib.metadata import version
+from tts_webui.utils.set_seed import set_seed
 
 
 def extension__tts_generation_webui():
@@ -27,7 +26,7 @@ def extension__tts_generation_webui():
     return {
         "package_name": "extension_audiocraft_mac",
         "name": "MusicGen (Mac)",
-        "version": "0.0.6",
+        "version": "0.0.7",
         "requirements": "git+https://github.com/rsxdalv/extension_audiocraft_mac@main",
         "description": "MusicGen allows generating music from text",
         "extension_type": "interface",
@@ -125,18 +124,6 @@ def save_generation(
     if tokens is not None:
         save_npz_musicgen(filename_npz, tokens, metadata)
 
-    filename_ogg = filename.replace(".wav", ".ogg")
-    # ext_callback_save_generation_musicgen(
-    #     audio_array=audio_array,
-    #     files={
-    #         "wav": filename,
-    #         "png": filename_png,
-    #         "ogg": filename_ogg,
-    #     },
-    #     metadata=metadata,
-    #     SAMPLE_RATE=SAMPLE_RATE,
-    # )
-
     return filename, plot, metadata
 
 
@@ -181,12 +168,12 @@ def generate(params: MusicGenGeneration, melody_in: Optional[Tuple[int, np.ndarr
     start = time.time()
 
     params["seed"] = parse_or_set_seed(params["seed"], 0)
-    # generator = torch.Generator(device=MODEL.device).manual_seed(params["seed"])
     log_generation_musicgen(params)
     if "melody" in model and melody is not None:
-        sr, melody = melody[0], torch.from_numpy(melody[1]).to(
-            MODEL.device
-        ).float().t().unsqueeze(0)
+        sr, melody = (
+            melody[0],
+            torch.from_numpy(melody[1]).to(MODEL.device).float().t().unsqueeze(0),
+        )
         print(melody.shape)
         if melody.dim() == 2:
             melody = melody[None]
@@ -196,18 +183,15 @@ def generate(params: MusicGenGeneration, melody_in: Optional[Tuple[int, np.ndarr
             melody_wavs=melody,
             melody_sample_rate=sr,
             progress=True,
-            # generator=generator,
         )
     else:
         output = MODEL.generate(
             descriptions=[text],
             progress=True,
-            # generator=generator,
         )
     set_seed(-1)
 
     elapsed = time.time() - start
-    # print time taken
     print("Generated in", "{:.3f}".format(elapsed), "seconds")
 
     output = output.detach().cpu().numpy().squeeze()
@@ -364,7 +348,16 @@ def generation_tab_musicgen():
 
     submit.click(
         inputs=inputs,
-        fn=lambda text, melody, model, duration, topk, topp, temperature, cfg_coef, seed, use_multi_band_diffusion: generate(
+        fn=lambda text,
+        melody,
+        model,
+        duration,
+        topk,
+        topp,
+        temperature,
+        cfg_coef,
+        seed,
+        use_multi_band_diffusion: generate(
             params=update_json(
                 text,
                 melody,

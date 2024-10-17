@@ -3,7 +3,7 @@ import setuptools
 setuptools.setup(
     name="extension_audiocraft_mac",
     packages=setuptools.find_namespace_packages(),
-    version="0.0.6",
+    version="0.0.7",
     author="rsxdalv",
     description="Audiocraft fork for Apple Silicon",
     url="https://github.com/rsxdalv/extension_audiocraft_mac",
