@@ -2,17 +2,16 @@ import json
 import os
 from importlib.metadata import version
 from typing import Optional, Tuple, TypedDict
-
 import gradio as gr
 import numpy as np
 import torch
 from scipy.io.wavfile import write as write_wav
-
-from tts_webui.bark.npz_tools import save_npz_musicgen
-from tts_webui.bark.parse_or_set_seed import parse_or_set_seed
+import numpy as np
+from typing import Union
+from tts_webui.utils import audio_array_to_sha256
+from tts_webui.utils.set_seed import set_seed
+from tts_webui.decorators.decorator_save_musicgen_npz import save_npz_musicgen
 from tts_webui.history_tab.save_to_favorites import save_to_favorites
-from tts_webui.musicgen.audio_array_to_sha256 import audio_array_to_sha256
-from tts_webui.musicgen.setup_seed_ui_musicgen import setup_seed_ui_musicgen
 from tts_webui.utils.create_base_filename import create_base_filename
 from tts_webui.utils.date import get_date_string
 from tts_webui.utils.list_dir_models import unload_model_button
@@ -26,7 +25,7 @@ def extension__tts_generation_webui():
     return {
         "package_name": "extension_audiocraft_mac",
         "name": "MusicGen (Mac)",
-        "version": "0.0.7",
+        "version": "0.0.8",
         "requirements": "git+https://github.com/rsxdalv/extension_audiocraft_mac@main",
         "description": "MusicGen allows generating music from text",
         "extension_type": "interface",
@@ -54,6 +53,25 @@ class MusicGenGeneration(TypedDict):
     cfg_coef: float
     seed: int
     use_multi_band_diffusion: bool
+
+
+def generate_random_seed() -> int:
+    return np.random.default_rng().integers(1, 2**32 - 1)
+
+
+def parse_or_generate_seed(seed: Union[str, int, None], index: int) -> int:
+    if seed is not None:
+        seed = int(seed)
+        if seed == -1:
+            seed = generate_random_seed()
+    indexed_seed = seed + index  # type: ignore
+    return indexed_seed
+
+
+def parse_or_set_seed(seed: Union[str, int, None], index: int) -> int:
+    seed = parse_or_generate_seed(seed, index)
+    set_seed(seed)
+    return seed
 
 
 def melody_to_sha256(melody: Optional[Tuple[int, np.ndarray]]) -> Optional[str]:
@@ -212,6 +230,32 @@ def generate(params: MusicGenGeneration, melody_in: Optional[Tuple[int, np.ndarr
     ]
 
 
+def setup_seed_ui_musicgen():
+    gr.Markdown("Seed")
+    with gr.Row():
+        seed_input = gr.Number(value=-1, show_label=False, container=False)
+        set_random_seed_button = gr.Button(
+            "backspace", elem_classes="btn-sm material-symbols-outlined", size="sm"
+        )
+
+        set_random_seed_button.click(
+            fn=lambda: gr.Number(value=-1), outputs=[seed_input]
+        )
+
+        set_old_seed_button = gr.Button(
+            "repeat", elem_classes="btn-sm material-symbols-outlined", size="sm"
+        )
+
+        def link_seed_cache(seed_cache):
+            set_old_seed_button.click(
+                fn=lambda x: gr.Number(value=x),
+                inputs=seed_cache,
+                outputs=seed_input,
+            )
+
+    return seed_input, set_old_seed_button, link_seed_cache
+
+
 def generation_tab_musicgen():
     gr.Markdown(f"""Audiocraft version: {AUDIOCRAFT_VERSION}""")
     with gr.Row(equal_height=False):
@@ -348,16 +392,7 @@ def generation_tab_musicgen():
 
     submit.click(
         inputs=inputs,
-        fn=lambda text,
-        melody,
-        model,
-        duration,
-        topk,
-        topp,
-        temperature,
-        cfg_coef,
-        seed,
-        use_multi_band_diffusion: generate(
+        fn=lambda text, melody, model, duration, topk, topp, temperature, cfg_coef, seed, use_multi_band_diffusion: generate(
             params=update_json(
                 text,
                 melody,
