@@ -23,18 +23,17 @@ from tts_webui.utils.set_seed import set_seed
 def extension__tts_generation_webui():
     generation_tab_musicgen()
     return {
-        "package_name": "extension_audiocraft_mac",
+        "package_name": "tts_webui_extension.audiocraft_mac",
         "name": "MusicGen (Mac)",
-        "version": "0.0.8",
-        "requirements": "git+https://github.com/rsxdalv/extension_audiocraft_mac@main",
+        "requirements": "git+https://github.com/rsxdalv/tts_webui_extension.audiocraft_mac@main",
         "description": "MusicGen allows generating music from text",
         "extension_type": "interface",
         "extension_class": "audio-music-generation",
         "author": "rsxdalv",
         "extension_author": "rsxdalv",
         "license": "MIT",
-        "website": "https://github.com/rsxdalv/extension_audiocraft_mac",
-        "extension_website": "https://github.com/rsxdalv/extension_audiocraft_mac",
+        "website": "https://github.com/rsxdalv/tts_webui_extension.audiocraft_mac",
+        "extension_website": "https://github.com/rsxdalv/tts_webui_extension.audiocraft_mac",
         "extension_platform_version": "0.0.1",
     }
 
